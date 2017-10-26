@@ -90,16 +90,16 @@ class StatsExportG9 extends Serializable{
     val sumNoSeasonEdito = noSeasonEdito.distinct().count()
     val sumNoBrandSeason = noBrandSeason.distinct().count()
 
-    noEdito.coalesce(1).write.mode(SaveMode.Overwrite).csv("/tmp/noEdito")
-    join.coalesce(1).write.mode(SaveMode.Overwrite).csv("/tmp/noEditoWithDiff")
+    join.coalesce(1).write.mode(SaveMode.Overwrite).csv("/tmp/result-data")
 
-    noBrandEdito.coalesce(1).write.mode(SaveMode.Overwrite).csv("/tmp/noBrandEdito")
-    noSeasonEdito.coalesce(1).write.mode(SaveMode.Overwrite).csv("/tmp/noSeasonEdito")
-    noBrandSeason.coalesce(1).write.mode(SaveMode.Overwrite).csv("/tmp/noBrandSeason")
 
+    import org.apache.hadoop.fs._;
+
+    val fs = FileSystem.get(sc.sparkContext.hadoopConfiguration);
+    val file = fs.globStatus(new Path("/tmp/result-data/part*"))(0).getPath().getName();
+    fs.rename(new Path("/tmp/result-data/" + file), new Path("/tmp/result-analyse.csv"));
 
     sc.stop()
-
 
     logger.info("*******************")
     logger.info("Sum edito exported : " + sumEdito)
