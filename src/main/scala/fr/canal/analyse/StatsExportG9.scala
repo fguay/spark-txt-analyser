@@ -60,7 +60,7 @@ class StatsExportG9 extends Serializable{
     val noEdito = distinctDiff.except(distinctEdito).cache()
 
     val noEditoAlias = noEdito.withColumnRenamed("editoId","noEditoId")
-    val join = noEditoAlias.join(diffDF,noEditoAlias("noEditoId") === diffDF("editoId")).select("editoId","plmId").cache()
+    val join = noEditoAlias.join(diffDF,noEditoAlias("noEditoId") === diffDF("editoId")).select("editoId","plmId","channelId").cache()
 
 
     val sumDiff = diffDF.count()
