@@ -23,7 +23,13 @@ object SparkHelper {
       .builder()
       .config(sparkConf(appName))
       .getOrCreate()
+  }
 
+  def sparkSession(conf: SparkConf) : SparkSession = {
+      SparkSession
+      .builder()
+      .config(conf)
+      .getOrCreate()
   }
 
 }
