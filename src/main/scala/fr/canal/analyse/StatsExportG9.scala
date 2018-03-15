@@ -41,14 +41,20 @@ class StatsExportG9 extends Serializable{
 
     val brandDF = sc.sparkContext.textFile("/tmp/brand.txt")
       .map(_.split(";"))
-      .map(attributes => BrandIds(attributes(0), attributes(1)))
+      .map(attributes => {
+         val latt = attributes.toList
+           BrandIds(latt(0), latt.lift(1))
+        })
       .toDF()
 
     brandDF.createOrReplaceTempView("brand")
 
     val seasonDF = sc.sparkContext.textFile("/tmp/season.txt")
       .map(_.split(";"))
-      .map(attributes => SeasonIds(attributes(0), attributes(1), attributes(2)))
+      .map(attributes => {
+        val latt = attributes.toList
+        SeasonIds(latt(0), latt.lift(1), latt.lift(2))
+      })
       .toDF()
 
     seasonDF.createOrReplaceTempView("season")
@@ -58,6 +64,7 @@ class StatsExportG9 extends Serializable{
     val distinctEdito = editoDF.select("editoId").distinct().cache()
     val matchs = distinctDiff.intersect(distinctEdito).cache()
     val noEdito = distinctDiff.except(distinctEdito).cache()
+    val noDiff = distinctEdito.except(distinctDiff).cache()
 
     val noEditoAlias = noEdito.withColumnRenamed("editoId","noEditoId")
     val join = noEditoAlias.join(diffDF,noEditoAlias("noEditoId") === diffDF("editoId")).select("editoId","plmId","channelId").cache()
@@ -92,12 +99,24 @@ class StatsExportG9 extends Serializable{
 
     join.coalesce(1).write.mode(SaveMode.Overwrite).csv("/tmp/result-data")
 
+    noDiff.coalesce(1).write.mode(SaveMode.Overwrite).csv("/tmp/result-nodiff")
+
+    noEditoAlias.coalesce(1).write.mode(SaveMode.Overwrite).csv("/tmp/result-nodiff-plm")
 
     import org.apache.hadoop.fs._;
 
     val fs = FileSystem.get(sc.sparkContext.hadoopConfiguration);
     val file = fs.globStatus(new Path("/tmp/result-data/part*"))(0).getPath().getName();
     fs.rename(new Path("/tmp/result-data/" + file), new Path("/tmp/result-analyse.csv"));
+
+    val file2 = fs.globStatus(new Path("/tmp/result-nodiff/part*"))(0).getPath().getName();
+    fs.rename(new Path("/tmp/result-nodiff/" + file2), new Path("/tmp/result-nodiff-analyse.csv"));
+
+
+
+    val file3 = fs.globStatus(new Path("/tmp/result-nodiff-plm/part*"))(0).getPath().getName();
+    fs.rename(new Path("/tmp/result-nodiff-plm/" + file3), new Path("/tmp/result-nodiff-plm-analyse.csv"));
+
 
     sc.stop()
 
@@ -117,12 +136,14 @@ class StatsExportG9 extends Serializable{
     logger.info("Sum brand in season not in brand: " + sumNoBrandSeason)
     logger.info("*******************")
 
+
+
   }
 }
 
 case class BroadCastIds (plmId:String, editoId:String, channelId:String)
 case class EditoIds(editoId:String, seasonId:String, brandId:String, channelODId:String)
-case class BrandIds(brandId:String, channelODId:String)
-case class SeasonIds(seasonId:String, brandId:String, channelODId:String)
+case class BrandIds(brandId:String, channelODId:Option[String])
+case class SeasonIds(seasonId:String, brandId:Option[String], channelODId:Option[String])
 
 
