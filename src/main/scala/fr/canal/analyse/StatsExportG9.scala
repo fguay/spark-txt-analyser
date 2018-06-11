@@ -4,11 +4,8 @@ package fr.canal.analyse
  * Everyone's favourite wordcount example.
  */
 
-import java.io.File
-
-import org.apache.spark.rdd._
 import org.apache.spark.sql.SaveMode
-import org.slf4j.{Logger, LoggerFactory}
+import org.slf4j.LoggerFactory
 
 object StatsExportG9 extends App {
   val s = new StatsExportG9()
@@ -91,31 +88,41 @@ class StatsExportG9 extends Serializable{
     val noBrandSeason = seasonBrand.except(brand)
 
 
+    val noBrandEditoDistinct = noBrandEdito.distinct()
+    val noSeasonEditoDistinct = noSeasonEdito.distinct()
+    val noBrandSeasonDistinct = noBrandSeason.distinct()
+
     val sumEditoBrand = editoBrand.distinct().count()
     val sumEditoSeason = editoSeason.distinct().count()
-    val sumNoBrandEdito = noBrandEdito.distinct().count()
-    val sumNoSeasonEdito = noSeasonEdito.distinct().count()
-    val sumNoBrandSeason = noBrandSeason.distinct().count()
+    val sumNoBrandEdito = noBrandEditoDistinct.count()
+    val sumNoSeasonEdito = noSeasonEditoDistinct.count()
+    val sumNoBrandSeason = noBrandSeasonDistinct.count()
 
     join.coalesce(1).write.mode(SaveMode.Overwrite).csv("/tmp/result-data")
-
     noDiff.coalesce(1).write.mode(SaveMode.Overwrite).csv("/tmp/result-nodiff")
-
     noEditoAlias.coalesce(1).write.mode(SaveMode.Overwrite).csv("/tmp/result-nodiff-plm")
 
-    import org.apache.hadoop.fs._;
+    noBrandEditoDistinct.coalesce(1).write.mode(SaveMode.Overwrite).csv("/tmp/result-noBrandEdito")
+    noSeasonEditoDistinct.coalesce(1).write.mode(SaveMode.Overwrite).csv("/tmp/result-noSeasonEdito")
+    noBrandSeasonDistinct.coalesce(1).write.mode(SaveMode.Overwrite).csv("/tmp/result-noBrandSeason")
 
-    val fs = FileSystem.get(sc.sparkContext.hadoopConfiguration);
-    val file = fs.globStatus(new Path("/tmp/result-data/part*"))(0).getPath().getName();
-    fs.rename(new Path("/tmp/result-data/" + file), new Path("/tmp/result-analyse.csv"));
+    import org.apache.hadoop.fs._
 
-    val file2 = fs.globStatus(new Path("/tmp/result-nodiff/part*"))(0).getPath().getName();
-    fs.rename(new Path("/tmp/result-nodiff/" + file2), new Path("/tmp/result-nodiff-analyse.csv"));
+    val fs = FileSystem.get(sc.sparkContext.hadoopConfiguration)
 
+    val file = fs.globStatus(new Path("/tmp/result-data/part*"))(0).getPath().getName()
+    fs.rename(new Path("/tmp/result-data/" + file), new Path("/tmp/result-analyse.csv"))
+    val file2 = fs.globStatus(new Path("/tmp/result-nodiff/part*"))(0).getPath().getName()
+    fs.rename(new Path("/tmp/result-nodiff/" + file2), new Path("/tmp/result-nodiff-analyse.csv"))
+    val file3 = fs.globStatus(new Path("/tmp/result-nodiff-plm/part*"))(0).getPath().getName()
+    fs.rename(new Path("/tmp/result-nodiff-plm/" + file3), new Path("/tmp/result-nodiff-plm-analyse.csv"))
 
-
-    val file3 = fs.globStatus(new Path("/tmp/result-nodiff-plm/part*"))(0).getPath().getName();
-    fs.rename(new Path("/tmp/result-nodiff-plm/" + file3), new Path("/tmp/result-nodiff-plm-analyse.csv"));
+    val file4 = fs.globStatus(new Path("/tmp/result-noBrandEdito/part*"))(0).getPath().getName()
+    fs.rename(new Path("/tmp/result-noBrandEdito/" + file4), new Path("/tmp/result-noBrandEdito.csv"))
+    val file5 = fs.globStatus(new Path("/tmp/result-noSeasonEdito/part*"))(0).getPath().getName()
+    fs.rename(new Path("/tmp/result-noSeasonEdito/" + file5), new Path("/tmp/result-noSeasonEdito.csv"))
+    val file6 = fs.globStatus(new Path("/tmp/result-noBrandSeason/part*"))(0).getPath().getName()
+    fs.rename(new Path("/tmp/result-noBrandSeason/" + file6), new Path("/tmp/result-noBrandSeason.csv"))
 
 
     sc.stop()
@@ -131,9 +138,9 @@ class StatsExportG9 extends Serializable{
     logger.info("Sum season exported : " + sumSeason)
     logger.info("Sum brand ref in edito export : " + sumEditoBrand)
     logger.info("Sum season ref in edito export : " + sumEditoSeason)
-    logger.info("Sum brand in edito not in brand : " + sumNoBrandEdito)
-    logger.info("Sum season in edito not in season : " + sumNoSeasonEdito)
-    logger.info("Sum brand in season not in brand: " + sumNoBrandSeason)
+    logger.info("Sum brand in edito not in brand (noBrandEdito): " + sumNoBrandEdito)
+    logger.info("Sum season in edito not in season (noSeasonEdito): " + sumNoSeasonEdito)
+    logger.info("Sum brand in season not in brand (noBrandSeason): " + sumNoBrandSeason)
     logger.info("*******************")
 
 
